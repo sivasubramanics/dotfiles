@@ -5,7 +5,7 @@ export PG_RESOURCES="$PG_ROOT/resources"
 
 # Shared Binaries & Scripts
 export PG_BIN="$PG_ENVS/pgbin"
-export PATH="$PG_BIN:$PG_ENVS/bin:$PATH"
+export PATH="$PG_BIN:$PG_ENVS/bin:/scratch/group/pgenomics/PG1/selvanayagam/.fzf/bin:$PATH"
 
 # Environment Shortcuts
 export TOOLS_DIR="$PG_ENVS/tools"

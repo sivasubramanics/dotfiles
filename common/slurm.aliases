@@ -1,0 +1,12 @@
+# Environment modules
+alias mls='module list'
+alias mp='module purge && printf "All modules unloaded.\n"'
+alias ms='module save'
+alias mr='module restore'
+
+# Slurm
+alias sq='squeue -u "$USER" -o "%.10i %.15j %.8T %.4C %.10m %.10M %.12L %.20R"'
+
+# Slurm
+alias scancelall='scancel -u "$USER"'
+alias sinfof='sinfo -o "%20P %10a %10l %10D %10T"'

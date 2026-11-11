@@ -8,26 +8,6 @@ alias getin_grace2="kitten ssh grace2.hprc.tamu.edu"
 alias getin_faster="kitten ssh faster1.hprc.tamu.edu"
 alias getin_faster2="kitten ssh faster2.hprc.tamu.edu"
 
-# Core replacements & defaults
-alias ls='eza --icons=auto --group-directories-first'
-alias l='eza -1 --icons=auto --group-directories-first'
-alias ll='eza -lh --git --header --icons=auto --group-directories-first'
-alias la='eza -lah --git --icons=auto --group-directories-first'
-alias ldot='eza -l -d .*/ --icons=auto'
-
-# Specialty sort views
-alias lsize='eza -lh --sort=size --reverse --icons=auto --group-directories-first'
-alias ltime='eza -lh --sort=modified --reverse --icons=auto --group-directories-first'
-
-# Directory-only views
-alias ldir='eza -D --icons=auto --group-directories-first'
-alias ldirl='eza -lhD --icons=auto --group-directories-first'
-
-# Tree views
-alias lt='eza -T --level=2 --icons=auto --group-directories-first'
-alias ltt='eza -T --level=3 --icons=auto --group-directories-first'
-alias ltree='eza -T --level=4 --git-ignore --icons=auto --group-directories-first'
-
 alias tmux='tmux -u'
 
 

@@ -1,0 +1,23 @@
+# tamu_mac/bashrc
+
+# 1. Initialize macOS Homebrew environment
+if [ -x /opt/homebrew/bin/brew ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [ -x /usr/local/bin/brew ]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+fi
+
+# 2. Load Mac-specific exports/paths (if you have one)
+if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/tamu_mac/exports" ]; then
+    source "$DOTFILES/tamu_mac/exports"
+fi
+
+# 3. Load Mac-specific aliases
+if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/tamu_mac/bash.aliases" ]; then
+    source "$DOTFILES/tamu_mac/bash.aliases"
+fi
+
+# 4. Source the shared common configuration
+if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/common/bashrc" ]; then
+    source "$DOTFILES/common/bashrc"
+fi

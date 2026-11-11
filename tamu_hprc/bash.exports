@@ -1,0 +1,36 @@
+
+export PG_ROOT="/scratch/group/pgenomics"
+export PG_ENVS="$PG_ROOT/envs"
+export PG_RESOURCES="$PG_ROOT/resources"
+
+# Shared Binaries & Scripts
+export PG_BIN="$PG_ENVS/pgbin"
+export PATH="$PG_BIN:$PG_ENVS/bin:$PATH"
+
+# Environment Shortcuts
+export TOOLS_DIR="$PG_ENVS/tools"
+export WORKFLOWS_DIR="$PG_ENVS/workflows"
+export IMGS_DIR="$PG_ENVS/imgs"
+export CONTAINER_DIR="$PG_ENVS/containers"
+export RLIB_DIR="$PG_ENVS/rlib"
+
+# Static Genomic Databases & References
+export GENOMES_DIR="$PG_RESOURCES/genomes"
+export DB_DIR="$PG_RESOURCES/db"
+
+# Package Caches & Package Managers
+export APPTAINER_CACHEDIR="$CONTAINER_DIR"
+export SINGULARITY_CACHEDIR="$CONTAINER_DIR"
+export PIP_CACHE_DIR="$PG_ENVS/pip/cache"
+export R_BIOC_CACHE="$RLIB_DIR/cache"
+export CARGO_HOME="$PG_ENVS/cargo"
+export RUSTUP_HOME="$PG_ENVS/rustup"
+export R_LIBS_SITE="$RLIB_DIR/%v"
+export R_LIBS_USER="$RLIB_DIR/%v"
+
+
+export MAMBA_ROOT_PREFIX="$PG_ENVS/conda"
+export MAMBA_EXE="$PG_ENVS/bin/micromamba"
+
+export SCRATCH_DIR="$PG_ROOT/PG1/selvanayagam"
+export MYEMAIL="siva.selvanayagam@agnet.tamu.edu"

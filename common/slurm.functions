@@ -1,0 +1,340 @@
+mf() {
+    if [[ $# -eq 0 ]]; then
+        printf "Error: Search query required.\nUsage: module-find <keyword>\n" >&2
+        return 1
+    fi
+
+    printf "Searching for modules matching '%s'...\n" "$1"
+
+    # Try Lmod 'spider' first; if not supported/available, fall back to 'avail'
+    if command -v lmod >/dev/null 2>&1 || module spider --version >/dev/null 2>&1; then
+        module spider "$1"
+    else
+        module avail "$1"
+    fi
+}
+
+
+mload() {
+    if [[ $# -eq 0 ]]; then
+        printf "Error: At least one module name required.\nUsage: module-load <module1> [module2 ...]\n" >&2
+        return 1
+    fi
+
+    if module load "$@"; then
+        printf "\nSuccessfully loaded: %s\n\n" "$*"
+    else
+        printf "\nWarning: One or more modules failed to load.\n\n" >&2
+    fi
+
+    # Always show updated loaded module state
+    module list
+}
+
+# Helper function: Ensure memory string has a 'G' suffix by default
+_format_slurm_mem() {
+    local mem="$1"
+    if [[ "$mem" =~ ^[0-9]+$ ]]; then
+        printf "%sG" "$mem"
+    else
+        printf "%s" "$mem"
+    fi
+}
+
+shist() {
+    local days="${1:-3}"
+    printf "Displaying job history for %s (last %s days)...\n" "$USER" "$days"
+    sacct -u "$USER" -S "now-${days}days" \
+        --format=JobID%12,JobName%18,State%10,Submit%19,Start%19,Elapsed%10,ReqCPUS%8,ReqMem%10
+}
+
+sklast() {
+    local last_job
+    last_job=$(squeue -u "$USER" -h -o "%i" | sort -n | tail -n1)
+
+    if [[ -z "$last_job" ]]; then
+        printf "No active or queued jobs found for user '%s'.\n" "$USER" >&2
+        return 1
+    fi
+
+    read -p "Are you sure you want to cancel job $last_job? (y/N): " -n 1 -r
+    printf "\n"
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        scancel "$last_job" && printf "Successfully cancelled job %s.\n" "$last_job"
+    else
+        printf "Operation aborted.\n"
+    fi
+}
+
+srunsh() {
+    local OPTIND opt
+    local cpus="2"
+    local raw_mem="8G"
+    local time_input="2h"
+    local nodes="1"
+    local conda_env=""
+
+    while getopts "p:m:t:n:e:h" opt; do
+        case "$opt" in
+            p) cpus="$OPTARG" ;;
+            m) raw_mem="$OPTARG" ;;
+            t) time_input="$OPTARG" ;;
+            n) nodes="$OPTARG" ;;
+            e) conda_env="$OPTARG" ;;
+            h)
+                cat << 'EOF'
+slurm-shell - Request an interactive compute node session
+
+Usage:
+  slurm-shell [-p cpus] [-m mem] [-t time] [-n nodes] [-e conda_env] [-h]
+
+Flags:
+  -p <cpus>        Number of CPU cores requested (Default: 2)
+  -m <mem>         Memory limit. Plain numbers default to GB (e.g., 16 -> 16G) (Default: 8G)
+  -t <time>        Time limit. Supports d/h/m suffixes (e.g., 12h, 2d, 30m) (Default: 2h)
+  -n <nodes>       Number of nodes requested (Default: 1)
+  -e <env>         Conda environment name to activate automatically on login
+  -h               Display this help message
+EOF
+                return 0
+                ;;
+            *) printf "Run 'slurm-shell -h' for usage instructions.\n" >&2; return 1 ;;
+        esac
+    done
+
+    local mem
+    mem="$(_format_slurm_mem "$raw_mem")"
+
+    local slurm_time
+    case "$time_input" in
+        *d) local days="${time_input%d}"; slurm_time="${days}-00:00:00" ;;
+        *h) local hours="${time_input%h}"; slurm_time="$(printf "%02d:00:00" "$hours")" ;;
+        *m) local mins="${time_input%m}"; slurm_time="$(printf "00:%02d:00" "$mins")" ;;
+        *)  slurm_time="$time_input" ;;
+    esac
+
+    printf "Requesting interactive session (%s CPUs, %s RAM, %s time, %s Node(s))...\n" \
+        "$cpus" "$mem" "$slurm_time" "$nodes"
+
+    local shell_cmd="bash -i"
+    if [[ -n "$conda_env" ]]; then
+        printf "Target Conda Env: %s\n" "$conda_env"
+        shell_cmd="bash --init-file <(echo 'source ~/.bashrc; micromamba activate $conda_env')"
+    fi
+
+    srun --nodes="$nodes" \
+         --cpus-per-task="$cpus" \
+         --mem="$mem" \
+         --time="$slurm_time" \
+         --pty $shell_cmd
+}
+
+# 5. Batch Job Submitter
+ssubmit() {
+    local OPTIND opt
+    local job_name=""
+    local cmd=""
+    local conda_env=""
+    local modules=""
+    local time_input="12h"
+    local raw_mem="32G"
+    local cpus="8"
+    local nodes="1"
+    local email="${MYEMAIL:-}"
+    local gpus="0"
+
+    while getopts "j:c:e:M:t:m:p:n:E:g:h" opt; do
+        case "$opt" in
+            j) job_name="$OPTARG" ;;
+            c) cmd="$OPTARG" ;;
+            e) conda_env="$OPTARG" ;;
+            M) modules="$OPTARG" ;;
+            t) time_input="$OPTARG" ;;
+            m) raw_mem="$OPTARG" ;;
+            p) cpus="$OPTARG" ;;
+            n) nodes="$OPTARG" ;;
+            E) email="$OPTARG" ;;
+            g) gpus="$OPTARG" ;;
+            h)
+                cat << 'EOF'
+slurm-submit - Submit a background batch job via sbatch without creating script files
+
+Usage:
+  slurm-submit -j <job_name> -c <command> [-M "module1 module2"] [-e conda_env] [-t time] [-m mem] [-p cpus] [-n nodes] [-E email] [-h]
+
+Flags:
+    -j <job_name>    Name of the job                         (Required)
+    -c <command>     Command to execute                      (Required)
+    -M <modules>     Space-separated list of modules to load (Optional)
+    -e <conda_env>   Conda environment to activate           (Optional)
+    -t <time>        Time limit (e.g., 12h, 2d, 30m)         [Default: 12h]
+    -m <mem>         Memory limit (in GiB, e.g., 32)         [Default: 32]
+    -p <cpus>        Number of CPU cores                     [Default: 8]
+    -n <nodes>       Number of nodes                         [Default: 1]
+    -g <gpu>         Number of GPUs                          [Default: 0]
+    -E <email>       Email for job notifications             [Default: $MYEMAIL]
+EOF
+                return 0
+                ;;
+            *) printf "Run 'slurm-submit -h' for usage details.\n" >&2; return 1 ;;
+        esac
+    done
+
+    if [[ -z "$job_name" || -z "$cmd" ]]; then
+        printf "Error: Both -j (job name) and -c (command) are required. Run 'slurm-submit -h' for usage details.\n" >&2
+        return 1
+    fi
+
+    local mem
+    mem="$(_format_slurm_mem "$raw_mem")"
+
+    local slurm_time
+    case "$time_input" in
+        *d) local days="${time_input%d}"; slurm_time="${days}-00:00:00" ;;
+        *h) local hours="${time_input%h}"; slurm_time="$(printf "%02d:00:00" "$hours")" ;;
+        *m) local mins="${time_input%m}"; slurm_time="$(printf "00:%02d:00" "$mins")" ;;
+        *)  slurm_time="$time_input" ;;
+    esac
+
+    local email_directives=""
+    if [[ -n "$email" ]]; then
+        email_directives=$(printf '#SBATCH --mail-type=END,FAIL\n#SBATCH --mail-user=%s' "$email")
+    fi
+
+    local gpu_directive=""
+
+    if [[ "$gpus" =~ ^[0-9]+$ ]] && (( gpus > 0 )); then
+        gpu_directive=$(printf '#SBATCH --gres=gpu:%s' "$gpus")
+    elif [[ ! "$gpus" =~ ^[0-9]+$ ]]; then
+        printf "Error: GPU count must be a non-negative integer.\n" >&2
+        return 1
+    fi
+
+    printf "Submitting batch job '%s' (%s CPUs, %s RAM, %s time)...\n" "$job_name" "$cpus" "$mem" "$slurm_time"
+    sbatch <<EOF
+#!/bin/bash
+#SBATCH --job-name=$job_name
+#SBATCH --output=${job_name}_%j.out
+#SBATCH --error=${job_name}_%j.err
+#SBATCH --nodes=$nodes
+#SBATCH --cpus-per-task=$cpus
+#SBATCH --mem=$mem
+#SBATCH --time=$slurm_time
+${gpu_directive}
+${email_directives}
+
+# Load environment modules if specified
+if [[ -n "$modules" ]]; then
+    if command -v module >/dev/null 2>&1; then
+        module purge 2>/dev/null || true
+        module load $modules
+    fi
+fi
+
+# Load WebProxy if present on cluster
+command -v module >/dev/null 2>&1 && module load WebProxy/0000 2>/dev/null || true
+
+printf "Job started on %s at %s\n" "\$(hostname)" "\$(date)"
+printf "Active Conda Env: %s\n" "\${CONDA_DEFAULT_ENV:-None}"
+printf "Executing: %s\n" "$cmd"
+printf "%s\n" "----------------------------------------"
+
+EXIT_CODE=0
+if [[ -n "$conda_env" ]]; then
+    micromamba run -n "$conda_env" bash -c "$cmd" || EXIT_CODE=\$?
+else
+    bash -c "$cmd" || EXIT_CODE=\$?
+fi
+
+printf "%s\n" "----------------------------------------"
+printf "Job finished with exit code %s at %s\n" "\$EXIT_CODE" "\$(date)"
+exit \$EXIT_CODE
+EOF
+}
+
+# 7. Tail Active/Recent Job Output Log
+slog() {
+    local job_id="$1"
+    if [[ -z "$job_id" ]]; then
+        job_id=$(squeue -u "$USER" -h -o "%i" | sort -n | tail -n1)
+    fi
+
+    if [[ -z "$job_id" ]]; then
+        printf "No job ID provided and no active jobs found.\n" >&2
+        return 1
+    fi
+
+    local log_file
+    # Search for custom named logs (${job_name}_${job_id}.out) or default slurm-${job_id}.out
+    log_file=$(ls -t *"${job_id}".{out,err,log} slurm-"${job_id}".* 2>/dev/null | head -n1)
+
+    if [[ -f "$log_file" ]]; then
+        printf "Tailing log file: %s\n" "$log_file"
+        tail -f "$log_file"
+    else
+        printf "Could not locate log file matching job ID '%s'.\n" "$job_id" >&2
+        return 1
+    fi
+}
+
+scanceljob() {
+    if [[ $# -eq 0 ]]; then
+        printf "Error: Job ID, job name, or -a/--all required.\n" >&2
+        printf "Usage:\n  scanceljob <job_id>\n  slurm-kill -a | --all\n  slurm-kill <job_name>\n" >&2
+        return 1
+    fi
+
+    local target="$1"
+
+    # Mass cancel only when explicitly passed -a or --all
+    if [[ "$target" == "-a" || "$target" == "--all" ]]; then
+        local active_jobs
+        active_jobs=$(squeue -u "$USER" -h -o "%i")
+
+        if [[ -z "$active_jobs" ]]; then
+            printf "No active or queued jobs found for user '%s'.\n" "$USER"
+            return 0
+        fi
+
+        printf "Active jobs for user '%s':\n" "$USER"
+        squeue -u "$USER" -o "%.10i %.15j %.8T %.10M %.20R"
+        printf "\n"
+
+        read -p "Are you sure you want to cancel ALL your jobs? (y/N): " -n 1 -r
+        printf "\n"
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            scancel -u "$USER" && printf "Successfully cancelled all jobs for user '%s'.\n" "$USER"
+        else
+            printf "Operation aborted.\n"
+        fi
+        return 0
+    fi
+
+    # Cancel by Numeric Job ID
+    if [[ "$target" =~ ^[0-9]+$ ]]; then
+        if scancel "$target"; then
+            printf "Successfully sent cancel signal to job ID %s.\n" "$target"
+        else
+            printf "Failed to cancel job ID %s.\n" "$target" >&2
+            return 1
+        fi
+        return 0
+    fi
+
+    # Cancel by Job Name (now safely handles jobs named 'all')
+    local named_jobs
+    named_jobs=$(squeue -u "$USER" --name="$target" -h -o "%i")
+
+    if [[ -z "$named_jobs" ]]; then
+        printf "No active or queued jobs found matching name '%s'.\n" "$target" >&2
+        return 1
+    fi
+
+    read -p "Cancel all jobs matching name '$target'? (y/N): " -n 1 -r
+    printf "\n"
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        scancel --name="$target" -u "$USER" && printf "Successfully cancelled job(s) named '%s'.\n" "$target"
+    else
+        printf "Operation aborted.\n"
+    fi
+}

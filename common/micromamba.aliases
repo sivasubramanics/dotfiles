@@ -1,0 +1,11 @@
+# Shortcuts
+alias mm='micromamba'
+alias mmls='micromamba env list'
+alias mmcl='micromamba clean --all'
+alias mmrm='micromamba env remove -n'
+
+# Environment management
+alias mma='micromamba activate'
+alias mmd='micromamba deactivate'
+alias mmu='micromamba update'
+alias mme='micromamba env export'

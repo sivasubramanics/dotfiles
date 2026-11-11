@@ -1,0 +1,15 @@
+# grep aliases
+alias grep='grep --color=auto'
+alias egrep='egrep --color=auto'
+alias fgrep='fgrep --color=auto'
+
+# tmux aliases
+alias tmux='tmux -u'
+
+# podman
+alias ralpine='runin alpine:latest'
+
+# navigation
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'

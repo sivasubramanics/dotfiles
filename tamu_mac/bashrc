@@ -1,0 +1,32 @@
+# tamu_hprc/bashrc
+
+# 1. System defaults and module tools (crucial for Lmod / 'module load')
+if [ -f /etc/bashrc ]; then
+    . /etc/bashrc
+fi
+
+# if [ -f /scratch/group/pgenomics/envs/pgenv/bashrc ]; then
+#     . /scratch/group/pgenomics/envs/pgenv/bashrc
+# else
+#     echo "Warning: /scratch/group/pgenomics/envs/pgenv/bashrc not found. Please check the path. Bash retains default env"
+# fi
+
+if [ -x /opt/homebrew/bin/brew ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [ -x /usr/local/bin/brew ]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+fi
+
+# 2. Load lab-specific exports and paths
+if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/tamu_hprc/bash.exports" ]; then
+    source "$DOTFILES/tamu_mac/bash.exports"
+fi
+
+if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/tamu_hprc/bash.aliases" ]; then
+    source "$DOTFILES/tamu_mac/bash.aliases"
+fi
+
+# 3. Source the shared common configuration (brings in your common aliases, functions, and tool hooks)
+if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/common/bashrc" ]; then
+    source "$DOTFILES/common/bashrc"
+fi

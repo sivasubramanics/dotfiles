@@ -1,0 +1,8 @@
+# SSH Aliases
+alias getin_myers="ssh myers.bioinformatics.nl"
+alias getin_smith="ssh smith.bioinformatics.nl"
+alias getin_handelsman="ssh handelsman.bioinformatics.nl"
+alias getin_grace="ssh grace1.hprc.tamu.edu"
+alias getin_grace2="ssh grace2.hprc.tamu.edu"
+alias getin_faster="ssh faster1.hprc.tamu.edu"
+alias getin_faster2="ssh faster2.hprc.tamu.edu"

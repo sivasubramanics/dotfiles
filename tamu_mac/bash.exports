@@ -1,0 +1,4 @@
+export PATH=$PATH:/Users/siva.selvanayagam/dotbin:/Users/siva.selvanayagam/.local/bin
+
+export MAMBA_ROOT_PREFIX="/opt/homebrew/Cellar/micromamba/2.8.1/"
+export MAMBA_EXE="/opt/homebrew/bin/micromamba"

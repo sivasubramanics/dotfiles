@@ -20,3 +20,12 @@ fi
 if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/common/bashrc" ]; then
     source "$DOTFILES/common/bashrc"
 fi
+
+# include slurm.functions and slurm.aliases if they exist
+if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/common/slurm.functions" ]; then
+    source "$DOTFILES/common/slurm.functions"
+fi
+
+if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/common/slurm.aliases" ]; then
+    source "$DOTFILES/common/slurm.aliases"
+fi

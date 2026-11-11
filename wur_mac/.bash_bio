@@ -1,0 +1,357 @@
+# Function to decode SAM flags into human-readable descriptions
+samflag() {
+    local flag=$1
+    local -a names=(
+        "read paired"
+        "read mapped in proper pair"
+        "read unmapped"
+        "mate unmapped"
+        "read reverse strand"
+        "mate reverse strand"
+        "first in pair"
+        "second in pair"
+        "not primary alignment"
+        "read fails platform/vendor quality checks"
+        "read is PCR or optical duplicate"
+        "supplementary alignment"
+    )
+    local -a bits=(
+        0x1 0x2 0x4 0x8 0x10 0x20
+        0x40 0x80 0x100 0x200 0x400 0x800
+    )
+
+    if [[ ! $flag =~ ^[0-9]+$ ]]; then
+        echo "Usage: samflag <decimal_flag>" >&2
+        return 1
+    fi
+
+    local i
+    for i in "${!bits[@]}"; do
+        if (( (flag & bits[i]) != 0 )); then
+            printf "    %s (0x%x)\n" "${names[i]}" "${bits[i]}"
+        fi
+    done
+}
+
+# Calculate N50, N90, and assembly stats with strict FASTA validation
+n50() {
+    if [[ $# -eq 0 ]]; then
+        echo "Usage: n50 <assembly.fa>" >&2
+        return 1
+    fi
+
+    local fa="$1"
+    if [[ ! -f "$fa" ]]; then
+        echo "ERROR: File '$fa' not found." >&2
+        return 1
+    fi
+
+    # Strict FASTA extension validation
+    local valid_fasta=0
+    case "$fa" in
+        *.fa|*.fasta|*.fna|*.faa|*.ffn|*.frn|\
+        *.fa.gz|*.fasta.gz|*.fna.gz|*.faa.gz|*.ffn.gz|*.frn.gz)
+            valid_fasta=1
+            ;;
+    esac
+
+    if [[ "$valid_fasta" -eq 0 ]]; then
+        echo "ERROR: '$fa' does not have a recognized FASTA extension (.fa, .fasta, .fna, etc.)." >&2
+        return 1
+    fi
+
+    local fai="${fa}.fai"
+
+    # 1. If .fai doesn't exist, try to generate it using samtools
+    if [[ ! -f "$fai" ]]; then
+        if command -v samtools &>/dev/null; then
+            echo "Index (.fai) not found. Generating using samtools..." >&2
+            samtools faidx "$fa" 2>/dev/null || true
+        fi
+    fi
+
+    # 2. Extract lengths: use .fai if available, otherwise parse FASTA via awk
+    local lengths_stream=""
+    if [[ -f "$fai" ]]; then
+        lengths_stream=$(awk '{print $2}' "$fai")
+    else
+        if [[ "$fa" == *.gz ]]; then
+            if command -v zcat &>/dev/null; then
+                lengths_stream=$(zcat "$fa" | awk '
+                    /^>/ { if (len > 0) print len; len=0; next }
+                    { len += length($0) }
+                    END { if (len > 0) print len }
+                ')
+            else
+                echo "ERROR: zcat not found to parse gzipped FASTA." >&2
+                return 1
+            fi
+        else
+            lengths_stream=$(awk '
+                /^>/ { if (len > 0) print len; len=0; next }
+                { len += length($0) }
+                END { if (len > 0) print len }
+            ' "$fa")
+        fi
+    fi
+
+    if [[ -z "$lengths_stream" ]]; then
+        echo "ERROR: No sequences found or unable to parse file." >&2
+        return 1
+    fi
+
+    # 3. Sort lengths descending and render formatted Unicode table via awk
+    echo "$lengths_stream" | sort -rn | awk -v filename="$fa" '
+        # Helper function to format large numbers with commas
+        function fmt(n) {
+            n = sprintf("%d", n)
+            len = length(n)
+            if (len <= 3) return n
+            res = ""
+            for (i = len; i >= 1; i--) {
+                res = substr(n, i, 1) res
+                if ((len - i + 1) % 3 == 0 && i > 1) {
+                    res = "," res
+                }
+            }
+            return res
+        }
+        {
+            lens[NR] = $1
+            total += $1
+        }
+        END {
+            num_seqs = NR
+            max_len = lens[1]
+            min_len = lens[num_seqs]
+
+            target50 = total * 0.50
+            target90 = total * 0.90
+
+            cum = 0
+            n50 = 0
+            n90 = 0
+
+            for (i = 1; i <= num_seqs; i++) {
+                cum += lens[i]
+                if (n50 == 0 && cum >= target50) {
+                    n50 = lens[i]
+                }
+                if (n90 == 0 && cum >= target90) {
+                    n90 = lens[i]
+                    break
+                }
+            }
+
+            print "──────────────────────────────────────────────────────────────"
+            print "Assembly Statistics"
+            print "──────────────────────────────────────────────────────────────"
+            printf "%-16s │ %s\n", "File", filename
+            printf "%-16s │ %s bp\n", "Total Length", fmt(total)
+            printf "%-16s │ %s\n", "Sequence Count", fmt(num_seqs)
+            printf "%-16s │ %s bp\n", "Max Length", fmt(max_len)
+            printf "%-16s │ %s bp\n", "Min Length", fmt(min_len)
+            printf "%-16s │ %s bp\n", "N50", fmt(n50)
+            printf "%-16s │ %s bp\n", "N90", fmt(n90)
+            print "──────────────────────────────────────────────────────────────"
+        }
+    '
+}
+
+# Quick command reference lookup
+how() {
+    if [[ $# -eq 0 ]]; then
+        echo "Usage: how <tool_name>" >&2
+        echo "Available : makeblastdb, blastn, bwa, faidx, minimap, mmseqs, flagstat" >&2
+        return 1
+    fi
+
+    local query
+    query=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+
+    case "$query" in
+        makeblastdb)
+            echo "──────────────────────────────────────────────────────────────"
+            echo "Tool: makeblastdb (BLAST+)"
+            echo "Description: Build a local database from a FASTA file"
+            echo "──────────────────────────────────────────────────────────────"
+            echo "  # Nucleotide database:"
+            echo "  makeblastdb -in reference.fa -dbtype nucl -out ref_blast_db"
+            echo "  # Protein database:"
+            echo "  makeblastdb -in proteins.fa -dbtype prot -out prot_blast_db"
+            echo "──────────────────────────────────────────────────────────────"
+            ;;
+        blastn)
+            echo "──────────────────────────────────────────────────────────────"
+            echo "Tool: blastn (BLAST+)"
+            echo "Description: Nucleotide-to-nucleotide search"
+            echo "──────────────────────────────────────────────────────────────"
+            echo "  blastn -query query.fa -db ref_blast_db -outfmt 6 \\"
+            echo "         -max_target_seqs 5 -num_threads 8 > results.tsv"
+            echo "──────────────────────────────────────────────────────────────"
+            ;;
+        bwa|bwaidx)
+            echo "──────────────────────────────────────────────────────────────"
+            echo "Tool: bwa index"
+            echo "Description: Index a reference genome for short-read alignment"
+            echo "──────────────────────────────────────────────────────────────"
+            echo "  bwa index reference.fa"
+            echo "  # Follow-up alignment:"
+            echo "  bwa mem -t 8 reference.fa read1.fastq.gz read2.fastq.gz | samtools sort -o aligned.bam"
+            echo "──────────────────────────────────────────────────────────────"
+            ;;
+        faidx)
+            echo "──────────────────────────────────────────────────────────────"
+            echo "Tool: samtools faidx"
+            echo "Description: Index FASTA or slice specific coordinates"
+            echo "──────────────────────────────────────────────────────────────"
+            echo "  samtools faidx reference.fa"
+            echo "  samtools faidx reference.fa chr1:100000-200000 > extracted.fa"
+            echo "──────────────────────────────────────────────────────────────"
+            ;;
+        minimap|minimap2)
+            echo "──────────────────────────────────────────────────────────────"
+            echo "Tool: minimap2"
+            echo "Description: Long-read or genome alignment"
+            echo "──────────────────────────────────────────────────────────────"
+            echo "  # PacBio / Nanopore reads:"
+            echo "  minimap2 -ax map-ont -t 8 reference.fa reads.fastq.gz | samtools sort -o sorted.bam"
+            echo "  # Genome-to-genome assembly:"
+            echo "  minimap2 -ax asm20 -t 8 reference.fa assembly.fa | samtools sort -o asm.bam"
+            echo "──────────────────────────────────────────────────────────────"
+            ;;
+        mmseqs)
+            echo "──────────────────────────────────────────────────────────────"
+            echo "Tool: mmseqs easy-search"
+            echo "Description: Ultra-fast sequence clustering and search"
+            echo "──────────────────────────────────────────────────────────────"
+            echo "  mmseqs easy-search queries.fa target_db.fa results.m8 tmp_dir --threads 8"
+            echo "──────────────────────────────────────────────────────────────"
+            ;;
+        flagstat)
+            echo "──────────────────────────────────────────────────────────────"
+            echo "Tool: samtools flagstat"
+            echo "Description: Quick QC summary of mapping flags in a BAM file"
+            echo "──────────────────────────────────────────────────────────────"
+            echo "  samtools flagstat input.bam"
+            echo "──────────────────────────────────────────────────────────────"
+            ;;
+        *)
+            echo "how: unknown topic '$1'" >&2
+            echo "Available : makeblastdb, blastn, bwa, faidx, minimap, mmseqs, flagstat" >&2
+            return 1
+            ;;
+    esac
+}
+
+
+# Quick command reference lookup and catalogue
+how() {
+    local query="${1:-}"
+    query=$(echo "$query" | tr '[:upper:]' '[:lower:]')
+
+    # If no argument or 'list' is passed, show the summary table
+    if [[ -z "$query" ]] || [[ "$query" == "list" ]]; then
+        echo "──────────────────────────────────────────────────────────────"
+        echo "Available Bioinformatics Commands"
+        echo "──────────────────────────────────────────────────────────────"
+        printf "%-16s │ %s\n" "TOOL" "DESCRIPTION"
+        echo "──────────────────────────────────────────────────────────────"
+        printf "%-16s │ %s\n" "makeblastdb" "Build a local database from a FASTA file"
+        printf "%-16s │ %s\n" "blastn" "Nucleotide-to-nucleotide search"
+        printf "%-16s │ %s\n" "bwaidx" "Index a reference genome for short-read alignment"
+        printf "%-16s │ %s\n" "faidx" "Index FASTA or slice specific coordinates"
+        printf "%-16s │ %s\n" "minimap2" "Long-read or genome alignment"
+        printf "%-16s │ %s\n" "mmseqs" "Ultra-fast sequence clustering and search"
+        printf "%-16s │ %s\n" "flagstat" "Quick QC summary of mapping flags in a BAM file"
+        echo "──────────────────────────────────────────────────────────────"
+        echo "Tip: Run 'how <tool>' to view detailed usage examples."
+        return 0
+    fi
+
+    case "$query" in
+        makeblastdb)
+            echo "──────────────────────────────────────────────────────────────"
+            echo "Tool: makeblastdb (BLAST+)"
+            echo "Description: Build a local database from a FASTA file"
+            echo "──────────────────────────────────────────────────────────────"
+            echo "  # Nucleotide database:"
+            echo "  makeblastdb -in reference.fa -dbtype nucl -out ref_blast_db"
+            echo "  # Protein database:"
+            echo "  makeblastdb -in proteins.fa -dbtype prot -out prot_blast_db"
+            echo "──────────────────────────────────────────────────────────────"
+            ;;
+        blastn)
+            echo "──────────────────────────────────────────────────────────────"
+            echo "Tool: blastn (BLAST+)"
+            echo "Description: Nucleotide-to-nucleotide search"
+            echo "──────────────────────────────────────────────────────────────"
+            echo "  blastn -query query.fa -db ref_blast_db -outfmt 6 \\"
+            echo "         -max_target_seqs 5 -num_threads 8 > results.tsv"
+            echo "──────────────────────────────────────────────────────────────"
+            ;;
+        bwa|bwaidx)
+            echo "──────────────────────────────────────────────────────────────"
+            echo "Tool: bwa index"
+            echo "Description: Index a reference genome for short-read alignment"
+            echo "──────────────────────────────────────────────────────────────"
+            echo "  bwa index reference.fa"
+            echo "  # Follow-up alignment:"
+            echo "  bwa mem -t 8 reference.fa read1.fastq.gz read2.fastq.gz | samtools sort -o aligned.bam"
+            echo "──────────────────────────────────────────────────────────────"
+            ;;
+        faidx)
+            echo "──────────────────────────────────────────────────────────────"
+            echo "Tool: samtools faidx"
+            echo "Description: Index FASTA or slice specific coordinates"
+            echo "──────────────────────────────────────────────────────────────"
+            echo "  samtools faidx reference.fa"
+            echo "  samtools faidx reference.fa chr1:100000-200000 > extracted.fa"
+            echo "──────────────────────────────────────────────────────────────"
+            ;;
+        minimap|minimap2)
+            echo "──────────────────────────────────────────────────────────────"
+            echo "Tool: minimap2"
+            echo "Description: Long-read or genome alignment"
+            echo "──────────────────────────────────────────────────────────────"
+            echo "  # PacBio / Nanopore reads:"
+            echo "  minimap2 -ax map-ont -t 8 reference.fa reads.fastq.gz | samtools sort -o sorted.bam"
+            echo "  # Genome-to-genome assembly:"
+            echo "  minimap2 -ax asm20 -t 8 reference.fa assembly.fa | samtools sort -o asm.bam"
+            echo "──────────────────────────────────────────────────────────────"
+            ;;
+        mmseqs)
+            echo "──────────────────────────────────────────────────────────────"
+            echo "Tool: mmseqs easy-search"
+            echo "Description: Ultra-fast sequence clustering and search"
+            echo "──────────────────────────────────────────────────────────────"
+            echo "  mmseqs easy-search queries.fa target_db.fa results.m8 tmp_dir --threads 8"
+            echo "──────────────────────────────────────────────────────────────"
+            ;;
+        flagstat)
+            echo "──────────────────────────────────────────────────────────────"
+            echo "Tool: samtools flagstat"
+            echo "Description: Quick QC summary of mapping flags in a BAM file"
+            echo "──────────────────────────────────────────────────────────────"
+            echo "  samtools flagstat input.bam"
+            echo "──────────────────────────────────────────────────────────────"
+            ;;
+        *)
+            echo "how: unknown topic '$1'" >&2
+            echo "Run 'how' or 'how list' to see available tools." >&2
+            return 1
+            ;;
+    esac
+}
+
+# Tab-completion function for the 'how' command
+_how_completion() {
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    # List of all available tool keys/aliases handled by the 'how' function
+    local options="makeblastdb blastn bwa bwaidx faidx minimap minimap2 mmseqs flagstat list"
+
+    COMPREPLY=( $(compgen -W "$options" -- "$cur") )
+}
+
+# Register the completion function for the 'how' command
+complete -F _how_completion how

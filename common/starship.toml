@@ -110,7 +110,7 @@ format = '[ $user ]($style)'
 
 [custom.cluster_hostname]
 command = 'hostname="${PSHOSTNAME:-$HOSTNAME}"; echo "${hostname%.bioinformatics.nl}"'
-when = true
+when = 'test -n "${PSHOSTNAME:-$HOSTNAME}"'
 style = "bg:surface0 fg:text"
 format = '[ $output]($style)'
 ignore_timeout = true

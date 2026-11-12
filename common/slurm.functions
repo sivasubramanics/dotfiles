@@ -1,16 +1,16 @@
 mf() {
     if [[ $# -eq 0 ]]; then
-        printf "Error: Search query required.\nUsage: module-find <keyword>\n" >&2
+        printf 'Error: Search query required.\nUsage: mf <keyword>\n' >&2
         return 1
     fi
 
-    printf "Searching for modules matching '%s'...\n" "$1"
+    printf "Searching for modules matching '%s'...\n" "$*"
 
-    # Try Lmod 'spider' first; if not supported/available, fall back to 'avail'
-    if command -v lmod >/dev/null 2>&1 || module spider --version >/dev/null 2>&1; then
-        module spider "$1"
+    if module spider "$@"; then
+        return 0
     else
-        module avail "$1"
+        printf 'module spider failed; falling back to module avail.\n' >&2
+        module avail "$@"
     fi
 }
 

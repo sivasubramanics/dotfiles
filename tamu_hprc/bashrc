@@ -5,6 +5,8 @@ if [ -f /etc/bashrc ]; then
     . /etc/bashrc
 fi
 
+export PSHOSTNAME
+
 # if [ -f /scratch/group/pgenomics/envs/pgenv/bashrc ]; then
 #     . /scratch/group/pgenomics/envs/pgenv/bashrc
 # else

@@ -805,3 +805,22 @@ clean_env() {
     export "$var_name"="$cleaned"
     # echo "Successfully cleaned and deduplicated \$$var_name"
 }
+
+# Re-run the last non-redo command
+redo() {
+    local last_cmd
+    local history_depth=${REDO_HISTORY_DEPTH:-50}
+
+    last_cmd=$(fc -ln -"${history_depth}" -1 |
+        awk '!/^[[:space:]]*(redo|r)([[:space:]]|$)/' |
+        tail -n 1 |
+        sed 's/^[[:space:]]*//')
+
+    if [[ -z "$last_cmd" ]]; then
+        printf 'redo: no previous command found in history\n' >&2
+        return 1
+    fi
+
+    printf '\033[1;32m$ %s\033[0m\n' "$last_cmd"
+    eval "$last_cmd"
+}

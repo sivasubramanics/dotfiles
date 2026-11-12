@@ -94,6 +94,7 @@ CentOS = ""
 Debian = "󰣚"
 Redhat = "󱄛"
 RedHatEnterprise = "󱄛"
+RockyLinux = "󱄛"
 
 [username]
 show_always = true

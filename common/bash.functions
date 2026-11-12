@@ -824,3 +824,59 @@ redo() {
     printf '\033[1;32m$ %s\033[0m\n' "$last_cmd"
     eval "$last_cmd"
 }
+
+# Check currency conversion rates (e.g., rate USD EUR 100)
+rate() {
+    local base="${1:-USD}"
+    local target="${2:-EUR}"
+    local amount="${3:-1}"
+
+    base="${base^^}"
+    target="${target^^}"
+
+    local response
+    response=$(curl -s "https://open.er-api.com/v6/latest/$base")
+
+    if command -v jq &>/dev/null; then
+        local rate
+        rate=$(echo "$response" | jq -r ".rates.$target")
+        if [ "$rate" = "null" ]; then
+            printf "rate: unknown currency code '%s'\n" "$target" >&2
+            return 1
+        fi
+
+        # Calculate final amount
+        local converted
+        converted=$(awk -v a="$amount" -v r="$rate" 'BEGIN { printf "%.2f", a * r }')
+
+        printf "\033[1m%s %s\033[0m = \033[1;32m%s %s\033[0m \033[2m(1 %s = %s %s)\033[0m\n" \
+            "$amount" "$base" "$converted" "$target" "$base" "$rate" "$target"
+    else
+        echo "$response"
+    fi
+}
+
+# Look up a word definition directly in the terminal
+dict() {
+    if [ -z "$1" ]; then
+        printf "Usage: dict <word>\n" >&2
+        return 1
+    fi
+
+    # Fetch definition from free dictionary API and parse/format nicely via curl
+    local url="https://api.dictionaryapi.dev/api/v2/entries/en/$1"
+
+    if command -v jq &>/dev/null; then
+        curl -s "$url" | jq -r '
+            if type == "array" then
+                .[] | "\n📖 \u001b[1;33m\(.word)\u001b[0m (\(.phonetic // .phonetics[1].text // ""))",
+                (.meanings[] | "  ▪ \u001b[1m\(.partOfSpeech)\u001b[0m:\n" + (.definitions[] | "    - \(.definition)" + if .example then "\n      \u001b[2m\"\(.example)\"\u001b[0m" else "" end))
+            else
+                "\u001b[0;31mWord not found or invalid response.\u001b[0m"
+            end
+        '
+    else
+        # Fallback if jq isn't installed
+        curl -s "$url"
+    fi
+}

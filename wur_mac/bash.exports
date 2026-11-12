@@ -1,0 +1,4 @@
+export PATH=$PATH:/Users/Shared/.local/bin:$HOME/git/wpscripts:$HOME/bin
+
+export MAMBA_ROOT_PREFIX="/Users/selva001/opt/mamba/"
+export MAMBA_EXE="/Users/selva001/bin/micromamba"

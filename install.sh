@@ -101,6 +101,31 @@ fi
 EOF
 
 
+# 5. Handle Starship configuration if starship is installed
+if command -v starship &> /dev/null; then
+    echo "==> Starship prompt detected. Setting up configuration..."
+    mkdir -p "$HOME/.config"
+
+    DEST_STARSHIP="$HOME/.config/starship.toml"
+    SRC_STARSHIP="$DOTFILES_SRC/common/starship.toml"
+
+    if [ -f "$SRC_STARSHIP" ]; then
+        if [ -f "$DEST_STARSHIP" ] || [ -L "$DEST_STARSHIP" ]; then
+            TIMESTAMP=$(date +%Y%m%d%H%M%S)
+            echo "==> Backing up existing $DEST_STARSHIP to ${DEST_STARSHIP}.bak.${TIMESTAMP}"
+            cp -p "$DEST_STARSHIP" "${DEST_STARSHIP}.bak.${TIMESTAMP}"
+        fi
+
+        echo "==> Copying starship.toml to $DEST_STARSHIP..."
+        cp -p "$SRC_STARSHIP" "$DEST_STARSHIP"
+    else
+        echo "Warning: Could not find starship.toml at $SRC_STARSHIP"
+    fi
+else
+    echo "==> Starship not found. Skipping starship configuration."
+fi
+
+
 echo "==> Installation complete!"
 echo "==> Your shell is now linked directly to your repository at: $DOTFILES_SRC"
 echo "==> Run 'source ~/.bashrc' to apply changes."

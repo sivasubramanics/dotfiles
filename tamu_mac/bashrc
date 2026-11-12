@@ -18,11 +18,11 @@ elif [ -x /usr/local/bin/brew ]; then
 fi
 
 # 2. Load lab-specific exports and paths
-if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/tamu_hprc/bash.exports" ]; then
+if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/tamu_mac/bash.exports" ]; then
     source "$DOTFILES/tamu_mac/bash.exports"
 fi
 
-if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/tamu_hprc/bash.aliases" ]; then
+if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/tamu_mac/bash.aliases" ]; then
     source "$DOTFILES/tamu_mac/bash.aliases"
 fi
 

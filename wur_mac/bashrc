@@ -1,23 +1,27 @@
-# tamu_mac/bashrc
 
-# 1. Initialize macOS Homebrew environment
+# tamu_hprc/bashrc
+
+# 1. System defaults and module tools (crucial for Lmod / 'module load')
+if [ -f /etc/bashrc ]; then
+    . /etc/bashrc
+fi
+
 if [ -x /opt/homebrew/bin/brew ]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
 elif [ -x /usr/local/bin/brew ]; then
     eval "$(/usr/local/bin/brew shellenv)"
 fi
 
-# 2. Load Mac-specific exports/paths (if you have one)
-if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/tamu_mac/exports" ]; then
-    source "$DOTFILES/tamu_mac/exports"
+# 2. Load lab-specific exports and paths
+if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/wur_mac/bash.exports" ]; then
+    source "$DOTFILES/wur_mac/bash.exports"
 fi
 
-# 3. Load Mac-specific aliases
-if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/tamu_mac/bash.aliases" ]; then
-    source "$DOTFILES/tamu_mac/bash.aliases"
+if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/wur_mac/bash.aliases" ]; then
+    source "$DOTFILES/wur_mac/bash.aliases"
 fi
 
-# 4. Source the shared common configuration
+# 3. Source the shared common configuration (brings in your common aliases, functions, and tool hooks)
 if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/common/bashrc" ]; then
     source "$DOTFILES/common/bashrc"
 fi

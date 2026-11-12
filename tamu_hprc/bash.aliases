@@ -1,0 +1,1 @@
+alias pgmodule='mload GCC/13.2.0  OpenMPI/4.1.6 pgenomics/1.0.1'

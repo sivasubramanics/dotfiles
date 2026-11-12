@@ -31,3 +31,7 @@ fi
 if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/common/slurm.aliases" ]; then
     source "$DOTFILES/common/slurm.aliases"
 fi
+
+if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/tamu_hprc/bash.aliases" ]; then
+    source "$DOTFILES/tamu_hprc/bash.aliases"
+fi

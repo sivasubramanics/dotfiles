@@ -113,6 +113,7 @@ command = 'hostname="${PSHOSTNAME:-$HOSTNAME}"; echo "${hostname%.bioinformatics
 when = true
 style = "bg:surface0 fg:text"
 format = '[ $output]($style)'
+ignore_timeout = true
 
 [directory]
 style = "fg:mantle bg:peach"

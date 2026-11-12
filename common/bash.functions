@@ -884,11 +884,16 @@ dict() {
 # yank a command from history and copy it to the clipboard using fzf for selection
 hy() {
   local copy_cmd
+  local entry
 
   case "$(uname -s)" in
-    Darwin) copy_cmd="pbcopy" ;;
+    Darwin)
+      copy_cmd="pbcopy"
+      ;;
     Linux)
-      if [[ -n "$WAYLAND_DISPLAY" ]] && command -v wl-copy >/dev/null 2>&1; then
+      if [[ -n "$SSH_TTY" || -n "$SSH_CONNECTION" ]]; then
+        copy_cmd="osc52"
+      elif [[ -n "$WAYLAND_DISPLAY" ]] && command -v wl-copy >/dev/null 2>&1; then
         copy_cmd="wl-copy"
       elif [[ -n "$DISPLAY" ]] && command -v xsel >/dev/null 2>&1; then
         copy_cmd="xsel --clipboard"
@@ -905,12 +910,16 @@ hy() {
       ;;
   esac
 
-  local entry
-  # Added sub(/^[ \t]+/, "") to strip leading indentation/spaces from history lines
-  entry="$(fc -ln 1 | awk '{sub(/^[ \t]+/, "")} !a[$0]++' | fzf --tac --multi --header 'Copy history')"
+  entry="$(fc -ln 1 | awk '{sub(/^[ \t]+/, "")} !a[$0]++' |
+    fzf --tac --multi --header 'Copy history')"
 
   [[ -z "$entry" ]] && return
 
-  printf '%s\n' "$entry" | $copy_cmd &&
-    echo "Copied to clipboard." >&2
+  if [[ "$copy_cmd" == "osc52" ]]; then
+    printf '\033]52;c;%s\a' "$(printf '%s' "$entry" | base64 | tr -d '\n')"
+  else
+    printf '%s\n' "$entry" | $copy_cmd
+  fi
+
+  echo "Copied to clipboard." >&2
 }

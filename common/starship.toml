@@ -3,7 +3,7 @@
 format = """
 [](surface0)\
 $os\
-$hostname\
+${custom.cluster_hostname}\
 [](bg:peach fg:surface0)\
 $directory\
 [](fg:peach bg:green)\

@@ -15,7 +15,7 @@ export CONTAINER_DIR="$PG_ENVS/containers"
 export RLIB_DIR="$PG_ENVS/rlib"
 
 # Static Genomic Databases & References
-export GENOMES_DIR="$PG_RESOURCES/genomes"
+export GENOMES_DIR="$PG_RESOURCES/genome"
 export DB_DIR="$PG_RESOURCES/db"
 
 # Package Caches & Package Managers

@@ -1,4 +1,6 @@
 "$schema" = 'https://starship.rs/config-schema.json'
+scan_timeout = 1000
+command_timeout = 2000
 
 format = """
 [](surface0)\

@@ -3,6 +3,7 @@ alias mm='micromamba'
 alias mmls='micromamba env list'
 alias mmcl='micromamba clean --all'
 alias mmrm='micromamba env remove -n'
+alias mmrun='micromamba run -n'
 
 # Environment management
 alias mma='micromamba activate'

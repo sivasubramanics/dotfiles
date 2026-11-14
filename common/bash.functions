@@ -1,3 +1,15 @@
+# function to copy files with progress bar using pv if available, otherwise fallback to cp
+cpv() {
+    # Check if pv exists AND if it's a standard 2-argument file copy
+    if command -v pv >/dev/null 2>&1 && [ "$#" -eq 2 ] && [ -f "$1" ]; then
+        pv "$1" > "$2"
+    else
+        # Otherwise, fall back entirely to native cp supporting all flags
+        # (e.g., -r, -f, -p, multiple files, etc.)
+        cp "$@"
+    fi
+}
+
 # function to count files in a directory tree and display the counts in a tree-like format
 countfiles() {
     local max_level=999

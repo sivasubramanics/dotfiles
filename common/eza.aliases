@@ -1,30 +1,56 @@
-# Core replacements & defaults (fast across both local SSDs and HPC shared filesystems)
-alias ls='eza --icons=auto --group-directories-first'
-alias l='eza -1 --icons=auto --group-directories-first'
-alias ll='eza -lh --header --icons=auto --group-directories-first'
-alias la='eza -lah --header --icons=auto --group-directories-first'
-alias ldot='eza -lh -d .*/ --icons=auto'
-
-# Opt-in Git status views (for when you explicitly want Git columns on HPC)
-alias llg='eza -lh --git --header --icons=auto --group-directories-first'
-alias lag='eza -lah --git --header --icons=auto --group-directories-first'
-
-# Automatically keep --git in ll/la on macOS (local SSDs have ~0ms Git overhead)
 if [[ "$(uname -s)" == "Darwin" ]]; then
+    # ==========================================
+    # macOS (Local SSD: full eza + Git status)
+    # ==========================================
+    alias ls='eza --icons=auto --group-directories-first'
+    alias l='eza -1 --icons=auto --group-directories-first'
     alias ll='eza -lh --git --header --icons=auto --group-directories-first'
     alias la='eza -lah --git --header --icons=auto --group-directories-first'
+    alias ldot='eza -lh -d .*/ --icons=auto'
+
+    # Specialty sort views
+    alias lsize='eza -lh --header --sort=size --reverse --icons=auto --group-directories-first'
+    alias ltime='eza -lh --header --sort=modified --reverse --icons=auto --group-directories-first'
+
+    # Directory-only views
+    alias ldir='eza -D --icons=auto --group-directories-first'
+    alias ldirl='eza -lhD --header --icons=auto --group-directories-first'
+
+    # Tree views
+    alias lt='eza -T --level=2 --icons=auto --group-directories-first'
+    alias ltt='eza -T --level=3 --icons=auto --group-directories-first'
+    alias ltree='eza -T --level=4 --git-ignore --icons=auto --group-directories-first'
+
+else
+    # ==========================================
+    # Linux / HPC (Shared FS: instant GNU ls)
+    # ==========================================
+    alias ls='command ls --color=auto --group-directories-first'
+    alias l='command ls -1 --color=auto --group-directories-first'
+    alias ll='command ls -lh --color=auto --group-directories-first'
+    alias la='command ls -lah --color=auto --group-directories-first'
+    alias ldot='command ls -lhd --color=auto .*/'
+
+    # Specialty sort views
+    alias lsize='command ls -lhS --color=auto --group-directories-first'
+    alias ltime='command ls -lht --color=auto --group-directories-first'
+
+    # Directory-only views
+    alias ldir='command ls -d --color=auto */'
+    alias ldirl='command ls -lhd --color=auto */'
+
+    # Tree views (uses system 'tree' if installed, falls back to eza)
+    if command -v tree &>/dev/null; then
+        alias lt='tree -C -L 2 --dirsfirst'
+        alias ltt='tree -C -L 3 --dirsfirst'
+        alias ltree='tree -C -L 4 --dirsfirst'
+    else
+        alias lt='eza -T --level=2 --icons=auto --group-directories-first'
+        alias ltt='eza -T --level=3 --icons=auto --group-directories-first'
+        alias ltree='eza -T --level=4 --icons=auto --group-directories-first'
+    fi
+
+    # Opt-in eza aliases if you ever want icons/formatting on HPC
+    alias ell='eza -lh --header --icons=auto --group-directories-first'
+    alias elt='eza -T --level=2 --icons=auto --group-directories-first'
 fi
-
-# Specialty sort views
-alias lsize='eza -lh --header --sort=size --reverse --icons=auto --group-directories-first'
-alias ltime='eza -lh --header --sort=modified --reverse --icons=auto --group-directories-first'
-
-# Directory-only views
-alias ldir='eza -D --icons=auto --group-directories-first'
-alias ldirl='eza -lhD --header --icons=auto --group-directories-first'
-
-# Tree views
-alias lt='eza -T --level=2 --icons=auto --group-directories-first'
-alias ltt='eza -T --level=3 --icons=auto --group-directories-first'
-alias ltree='eza -T --level=4 --icons=auto --group-directories-first'
-alias ltreeg='eza -T --level=4 --git-ignore --icons=auto --group-directories-first'

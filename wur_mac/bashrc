@@ -12,6 +12,10 @@ elif [ -x /usr/local/bin/brew ]; then
     eval "$(/usr/local/bin/brew shellenv)"
 fi
 
+if command -v starship >/dev/null 2>&1; then
+    eval "$(starship init bash)"
+fi
+
 # 2. Load lab-specific exports and paths
 if [ -n "${DOTFILES:-}" ] && [ -f "$DOTFILES/wur_mac/bash.exports" ]; then
     source "$DOTFILES/wur_mac/bash.exports"

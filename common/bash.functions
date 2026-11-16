@@ -1,11 +1,18 @@
-# function to copy files with progress bar using pv if available, otherwise fallback to cp
+# Copy files with progress bar using pv if available, otherwise fallback to cp
 cpv() {
-    # Check if pv exists AND if it's a standard 2-argument file copy
-    if command -v pv >/dev/null 2>&1 && [ "$#" -eq 2 ] && [ -f "$1" ]; then
-        pv "$1" > "$2"
+    # Use pv for single-file copies (whether destination is a file path, '.', or a directory)
+    if command -v pv >/dev/null 2>&1 && [[ "$#" -eq 2 ]] && [[ -f "$1" ]]; then
+        local src="$1"
+        local dst="$2"
+
+        # If destination is a directory (including '.' or '..'), append the source filename
+        if [[ -d "$dst" ]]; then
+            dst="${dst%/}/${src##*/}"
+        fi
+
+        pv "$src" > "$dst" && chmod --reference="$src" "$dst" 2>/dev/null || true
     else
-        # Otherwise, fall back entirely to native cp supporting all flags
-        # (e.g., -r, -f, -p, multiple files, etc.)
+        # Fall back to native cp for flags (-r, -p, etc.) or multiple files
         cp "$@"
     fi
 }

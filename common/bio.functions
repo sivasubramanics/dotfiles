@@ -269,3 +269,58 @@ _how_completion() {
 
 # Register the completion function for the 'how' command
 complete -F _how_completion how
+
+
+# Reverse-complement a DNA sequence (handles lowercase, outputs uppercase)
+revcomp() {
+    local seq=""
+
+    if [[ $# -gt 0 ]]; then
+        seq="$*"
+    elif [[ ! -t 0 ]]; then
+        seq=$(cat)
+    else
+        echo "Usage: revcomp <sequence>" >&2
+        return 1
+    fi
+
+    # Strip whitespace and convert lowercase to uppercase (Bash 4+)
+    seq="${seq//[[:space:]]/}"
+    seq="${seq^^}"
+
+    if [[ -z "$seq" ]]; then
+        echo "ERROR: Empty sequence provided." >&2
+        return 1
+    fi
+
+    # Validate IUPAC DNA characters (including ambiguous bases and N)
+    if [[ ! "$seq" =~ ^[ACGTURYSWKMBDHVN]+$ ]]; then
+        echo "ERROR: Invalid nucleotide characters in sequence." >&2
+        return 1
+    fi
+
+    local out=""
+    local i ch
+    for (( i=${#seq}-1; i>=0; i-- )); do
+        ch="${seq:i:1}"
+        case "$ch" in
+            A) out+="T" ;;
+            T|U) out+="A" ;;
+            C) out+="G" ;;
+            G) out+="C" ;;
+            R) out+="Y" ;;
+            Y) out+="R" ;;
+            S) out+="S" ;;
+            W) out+="W" ;;
+            K) out+="M" ;;
+            M) out+="K" ;;
+            B) out+="V" ;;
+            V) out+="B" ;;
+            D) out+="H" ;;
+            H) out+="D" ;;
+            N) out+="N" ;;
+        esac
+    done
+
+    printf "%s\n" "$out"
+}

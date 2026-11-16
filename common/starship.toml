@@ -5,7 +5,7 @@ command_timeout = 2000
 format = """
 [](surface0)\
 $os\
-${custom.cluster_hostname}\
+${env_var.SHORT_HOST}\
 [](bg:peach fg:surface0)\
 $directory\
 [](fg:peach bg:green)\
@@ -111,12 +111,16 @@ format = '[ $user ]($style)'
 # trim_at = '.bioinformatics.nl'
 # disabled = false
 
-[custom.cluster_hostname]
-command = 'hostname="${PSHOSTNAME:-$HOSTNAME}"; echo "${hostname%.bioinformatics.nl}"'
-when = 'test -n "${PSHOSTNAME:-$HOSTNAME}"'
+# [custom.cluster_hostname]
+# command = 'hostname="${PSHOSTNAME:-$HOSTNAME}"; echo "${hostname%.bioinformatics.nl}"'
+# when = 'test -n "${PSHOSTNAME:-$HOSTNAME}"'
+# style = "bg:surface0 fg:text"
+# format = '[ $output]($style)'
+# ignore_timeout = true
+
+[env_var.SHORT_HOST]
 style = "bg:surface0 fg:text"
-format = '[ $output]($style)'
-ignore_timeout = true
+format = '[ $env_value]($style)'
 
 [directory]
 style = "fg:mantle bg:peach"
@@ -149,6 +153,7 @@ format = '[[ $symbol( $version) ](fg:base bg:teal)]($style)'
 symbol = " "
 style = "bg:teal"
 format = '[[ $symbol( $version) ](fg:base bg:teal)]($style)'
+disabled = true
 
 [rust]
 symbol = ""

@@ -7,6 +7,10 @@ fi
 
 export PSHOSTNAME
 
+# In tamu_hprc/bashrc (replace your existing export PSHOSTNAME line)
+_raw_host="${PSHOSTNAME:-$HOSTNAME}"
+export SHORT_HOST="${_raw_host%.bioinformatics.nl}"
+
 # if [ -f /scratch/group/pgenomics/envs/pgenv/bashrc ]; then
 #     . /scratch/group/pgenomics/envs/pgenv/bashrc
 # else

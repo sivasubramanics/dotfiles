@@ -30,7 +30,7 @@ export R_LIBS_USER="$RLIB_DIR/%v"
 
 
 export MAMBA_ROOT_PREFIX="$PG_ENVS/conda"
-export MAMBA_EXE="$PG_ENVS/bin/micromamba"
+export MAMBA_EXE="$HOME/bin/micromamba"
 
 export SCRATCH_DIR="$PG_ROOT/PG1/selvanayagam"
 export MYEMAIL="siva.selvanayagam@agnet.tamu.edu"

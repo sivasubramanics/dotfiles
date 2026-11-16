@@ -72,6 +72,10 @@ fi
 echo "==> Writing clean bootstrap configuration to $DEST_BASHRC..."
 cat << EOF > "$DEST_BASHRC"
 # --- Dotfiles Environment Bootstrap ---
+# In tamu_hprc/bashrc (replace your existing export PSHOSTNAME line)
+_raw_host="\${PSHOSTNAME:-\$HOSTNAME}"
+export SHORT_HOST="\${_raw_host%.bioinformatics.nl}"
+# Set the DOTFILES and ENV variables for the current shell session
 export DOTFILES="$DOTFILES_SRC"
 export ENV="$ENV"
 

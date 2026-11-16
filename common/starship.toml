@@ -139,10 +139,14 @@ truncation_symbol = "…/"
 symbol = ""
 style = "bg:teal"
 format = '[[ $symbol $branch ](fg:base bg:green)]($style)'
+command_timeout = 100
+scan_timeout = 10
 
 [git_status]
 style = "bg:teal"
 format = '[[($all_status$ahead_behind )](fg:base bg:green)]($style)'
+command_timeout = 100
+scan_timeout = 10
 
 [nodejs]
 symbol = ""

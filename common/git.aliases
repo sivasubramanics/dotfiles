@@ -1,2 +1,3 @@
 alias gpull='gitsync'
 alias gpush='gitsync --push'
+alias gstatus='git status -sb'

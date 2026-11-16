@@ -1,19 +1,30 @@
-# Core replacements & defaults
+# Core replacements & defaults (fast across both local SSDs and HPC shared filesystems)
 alias ls='eza --icons=auto --group-directories-first'
 alias l='eza -1 --icons=auto --group-directories-first'
-alias ll='eza -lh --git --header --icons=auto --group-directories-first'
-alias la='eza -lah --git --icons=auto --group-directories-first'
-alias ldot='eza -l -d .*/ --icons=auto'
+alias ll='eza -lh --header --icons=auto --group-directories-first'
+alias la='eza -lah --header --icons=auto --group-directories-first'
+alias ldot='eza -lh -d .*/ --icons=auto'
+
+# Opt-in Git status views (for when you explicitly want Git columns on HPC)
+alias llg='eza -lh --git --header --icons=auto --group-directories-first'
+alias lag='eza -lah --git --header --icons=auto --group-directories-first'
+
+# Automatically keep --git in ll/la on macOS (local SSDs have ~0ms Git overhead)
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    alias ll='eza -lh --git --header --icons=auto --group-directories-first'
+    alias la='eza -lah --git --header --icons=auto --group-directories-first'
+fi
 
 # Specialty sort views
-alias lsize='eza -lh --sort=size --reverse --icons=auto --group-directories-first'
-alias ltime='eza -lh --sort=modified --reverse --icons=auto --group-directories-first'
+alias lsize='eza -lh --header --sort=size --reverse --icons=auto --group-directories-first'
+alias ltime='eza -lh --header --sort=modified --reverse --icons=auto --group-directories-first'
 
 # Directory-only views
 alias ldir='eza -D --icons=auto --group-directories-first'
-alias ldirl='eza -lhD --icons=auto --group-directories-first'
+alias ldirl='eza -lhD --header --icons=auto --group-directories-first'
 
 # Tree views
 alias lt='eza -T --level=2 --icons=auto --group-directories-first'
 alias ltt='eza -T --level=3 --icons=auto --group-directories-first'
-alias ltree='eza -T --level=4 --git-ignore --icons=auto --group-directories-first'
+alias ltree='eza -T --level=4 --icons=auto --group-directories-first'
+alias ltreeg='eza -T --level=4 --git-ignore --icons=auto --group-directories-first'

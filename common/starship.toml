@@ -1,6 +1,8 @@
 "$schema" = 'https://starship.rs/config-schema.json'
-scan_timeout = 1000
-command_timeout = 2000
+# Global settings MUST go at the very top, before any [section] headers
+command_timeout = 100
+scan_timeout = 10
+
 
 format = """
 [](surface0)\
@@ -135,18 +137,19 @@ truncation_symbol = "…/"
 "Pictures" = " "
 "Developer" = "󰲋 "
 
+
+format = """
+...
+"""
+
 [git_branch]
 symbol = ""
 style = "bg:teal"
 format = '[[ $symbol $branch ](fg:base bg:green)]($style)'
-command_timeout = 100
-scan_timeout = 10
 
 [git_status]
 style = "bg:teal"
 format = '[[($all_status$ahead_behind )](fg:base bg:green)]($style)'
-command_timeout = 100
-scan_timeout = 10
 
 [nodejs]
 symbol = ""

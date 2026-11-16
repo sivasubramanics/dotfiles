@@ -1,0 +1,48 @@
+# Usage:
+#   gsync "commit message"   -> stash, pull (--rebase), pop stash, commit, push
+#   gsync --pull  (or gpull) -> stash, pull (--rebase), pop stash (no commit/push)
+gsync() {
+    local pull_only=false
+    local msg="Update dotfiles"
+
+    if [[ "$1" == "--pull" || "$1" == "-p" ]]; then
+        pull_only=true
+    elif [[ -n "$1" ]]; then
+        msg="$1"
+    fi
+
+    # 1. Stash uncommitted changes (only if the working tree isn't clean)
+    local stashed=false
+    if [[ -n $(git status --porcelain) ]]; then
+        git stash push -u -m "gsync-autostash" >/dev/null
+        stashed=true
+    fi
+
+    # 2. Pull remote changes cleanly using rebase
+    if ! git pull --rebase; then
+        echo "Pull failed or hit conflicts. Resolve them, then run 'git stash pop'."
+        return 1
+    fi
+
+    # 3. Re-apply your local changes on top of the updated remote branch
+    if [[ "$stashed" == true ]]; then
+        if ! git stash pop >/dev/null; then
+            echo "Conflict while restoring local changes. Resolve manually."
+            return 1
+        fi
+    fi
+
+    # 4. Stop here if pulling only
+    if [[ "$pull_only" == true ]]; then
+        git status -s
+        return 0
+    fi
+
+    # 5. Otherwise stage, commit, and push
+    if [[ -n $(git status --porcelain) ]]; then
+        git add -A
+        git commit -m "$msg"
+    fi
+
+    git push
+}

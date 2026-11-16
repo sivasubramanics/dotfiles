@@ -18,7 +18,7 @@ if [[ -f "$CARGO_HOME/env" ]]; then
     source "$CARGO_HOME/env"
 fi
 
-for file in "$DOTFILES"/common/{bash.aliases,bash.functions,bio.aliases,bio.functions,micromamba.aliases,micromamba.functions}; do
+for file in "$DOTFILES"/common/{bash.aliases,bash.functions,bio.aliases,bio.functions,micromamba.aliases,micromamba.functions,git.aliases,git.functions}; do
     if [[ -f "$file" ]]; then
         source "$file"
     fi

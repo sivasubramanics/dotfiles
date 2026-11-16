@@ -1,0 +1,2 @@
+alias gpull='gsync --pull'
+alias gpush='gsync'

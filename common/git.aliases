@@ -1,2 +1,2 @@
-alias gpull='gsync --pull'
-alias gpush='gsync'
+alias gpull='gitsync'
+alias gpush='gitsync --push'

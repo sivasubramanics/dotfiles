@@ -1,48 +1,124 @@
-# Usage:
-#   gsync "commit message"   -> stash, pull (--rebase), pop stash, commit, push
-#   gsync --pull  (or gpull) -> stash, pull (--rebase), pop stash (no commit/push)
-gsync() {
-    local pull_only=false
-    local msg="Update dotfiles"
+# Sync one or more Git repositories:
+#   gpull [DIR ...]                 -> fetch, stash, pull (--rebase), pop stash
+#   gpush [-m "msg"] [DIR ...]      -> same as gpull, plus stage, commit, and push
+gitsync() {
+    local paths=()
+    local do_push=false
+    local commit_msg="Update repository"
 
-    if [[ "$1" == "--pull" || "$1" == "-p" ]]; then
-        pull_only=true
-    elif [[ -n "$1" ]]; then
-        msg="$1"
-    fi
+    # Parse CLI arguments
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            -h|--help)
+                cat <<'EOF'
+Usage: gitsync [--push] [-m "MESSAGE"] [DIRECTORY ...]
 
-    # 1. Stash uncommitted changes (only if the working tree isn't clean)
-    local stashed=false
-    if [[ -n $(git status --porcelain) ]]; then
-        git stash push -u -m "gsync-autostash" >/dev/null
-        stashed=true
-    fi
+Safely stash local edits, pull remote updates (--rebase), restore edits, and optionally commit & push.
 
-    # 2. Pull remote changes cleanly using rebase
-    if ! git pull --rebase; then
-        echo "Pull failed or hit conflicts. Resolve them, then run 'git stash pop'."
-        return 1
-    fi
+Options:
+  -p, --push          Stage, commit, and push local changes after pulling
+  -m, --message MSG   Commit message when pushing (default: "Update repository")
+  -h, --help          Show this help message
 
-    # 3. Re-apply your local changes on top of the updated remote branch
-    if [[ "$stashed" == true ]]; then
-        if ! git stash pop >/dev/null; then
-            echo "Conflict while restoring local changes. Resolve manually."
-            return 1
+Aliases:
+  gpull [DIR ...]               Pull updates cleanly across one or more repos
+  gpush [-m "MSG"] [DIR ...]    Pull, commit, and push across one or more repos
+EOF
+                return 0
+                ;;
+            -p|--push)
+                do_push=true
+                shift
+                ;;
+            -m|--message)
+                if [ -z "$2" ]; then
+                    printf "gitsync: option '%s' requires a commit message\n" "$1" >&2
+                    return 1
+                fi
+                commit_msg="$2"
+                shift 2
+                ;;
+            -*)
+                printf "gitsync: unknown option '%s'\n" "$1" >&2
+                return 1
+                ;;
+            *)
+                paths+=("$1")
+                shift
+                ;;
+        esac
+    done
+
+    # Default to current directory if no path is provided
+    [ ${#paths[@]} -eq 0 ] && paths=(".")
+
+    for target_dir in "${paths[@]}"; do
+        if [ ! -d "$target_dir" ]; then
+            echo -e "\033[0;31m[gitsync]\033[0m Directory '$target_dir' does not exist."
+            continue
         fi
-    fi
 
-    # 4. Stop here if pulling only
-    if [[ "$pull_only" == true ]]; then
-        git status -s
-        return 0
-    fi
+        if ! git -C "$target_dir" rev-parse --is-inside-work-tree &>/dev/null; then
+            echo -e "\033[0;31m[gitsync]\033[0m '$target_dir' is not a git repository."
+            continue
+        fi
 
-    # 5. Otherwise stage, commit, and push
-    if [[ -n $(git status --porcelain) ]]; then
-        git add -A
-        git commit -m "$msg"
-    fi
+        local repo_name
+        repo_name=$(basename "$(git -C "$target_dir" rev-parse --show-toplevel)")
 
-    git push
+        if ! git -C "$target_dir" rev-parse '@{u}' &>/dev/null; then
+            echo -e "\033[0;33m[gitsync]\033[0m Repo '$repo_name' has no upstream tracking branch set."
+            continue
+        fi
+
+        echo -e "\033[0;36m[gitsync]\033[0m Syncing '$repo_name' (${target_dir})..."
+
+        # 1. Stash uncommitted changes if working tree is dirty
+        local stashed=false
+        if [[ -n $(git -C "$target_dir" status --porcelain) ]]; then
+            git -C "$target_dir" stash push -u -m "gitsync-autostash" >/dev/null
+            stashed=true
+        fi
+
+        # 2. Pull remote changes cleanly using rebase
+        if ! git -C "$target_dir" pull --rebase --quiet; then
+            echo -e "\033[0;31m[gitsync]\033[0m Rebase failed for '$repo_name'. Resolve conflicts manually."
+            [ "$stashed" == true ] && echo -e "\033[0;33m[gitsync]\033[0m Note: Your local changes are saved in 'git stash'."
+            continue
+        fi
+
+        # 3. Restore stashed local changes
+        if [ "$stashed" == true ]; then
+            if ! git -C "$target_dir" stash pop >/dev/null; then
+                echo -e "\033[0;31m[gitsync]\033[0m Conflict restoring local edits in '$repo_name'. Resolve manually."
+                continue
+            fi
+        fi
+
+        # 4. If not pushing, report status and move to next repo
+        if [ "$do_push" == false ]; then
+            echo -e "\033[0;32m[gitsync]\033[0m '$repo_name' pulled and up to date."
+            continue
+        fi
+
+        # 5. Stage & commit if there are uncommitted changes
+        if [[ -n $(git -C "$target_dir" status --porcelain) ]]; then
+            git -C "$target_dir" add -A
+            git -C "$target_dir" commit -m "$commit_msg" --quiet
+            echo -e "\033[0;32m[gitsync]\033[0m Committed changes in '$repo_name': \"$commit_msg\""
+        fi
+
+        # 6. Push if local branch is ahead of upstream
+        local ahead
+        ahead=$(git -C "$target_dir" rev-list --count '@{u}..HEAD')
+        if [ "$ahead" -gt 0 ]; then
+            if git -C "$target_dir" push --quiet; then
+                echo -e "\033[0;32m[gitsync]\033[0m Pushed $ahead commit(s) for '$repo_name'."
+            else
+                echo -e "\033[0;31m[gitsync]\033[0m Push failed for '$repo_name'."
+            fi
+        else
+            echo -e "\033[0;32m[gitsync]\033[0m '$repo_name' is already up to date with remote."
+        fi
+    done
 }
